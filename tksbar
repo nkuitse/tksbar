@@ -1,0 +1,95 @@
+#!/usr/bin/wish
+
+package require Tk
+
+proc start {{height 24}} {
+    set ::status "off"
+
+    . configure -borderwidth 0 -bg #28e
+
+    wm title . clock
+    wm iconname . clock
+    wm geometry . [winfo screenwidth .]x$height
+
+    wm overrideredirect . 1
+    #wm attributes . -topmost 0
+    wm resizable . 0 0
+
+    font create font(.d.t) -family {Inconsolata} -size [expr $height / 2 - 3]
+    font create font(.d.w) -family {Inconsolata} -size [expr $height / 2 - 3] -weight bold
+    font create font(.d.m) -family {Inconsolata} -size [expr $height / 2 - 3]
+    font create font(.s)   -family {Inconsolata} -size [expr $height / 2 - 3] -weight bold
+    font create font(.n)   -family {Inconsolata} -size [expr $height / 2 - 3]
+
+    # Date and time
+    frame  .d
+    button .d.t -textvar time -bg #444 -fg #fff
+    button .d.w -textvar wday -bg #fff -fg darkred
+    button .d.m -textvar mday -bg #444 -fg #fff
+
+    # Status
+    button .s -textvar status -bg #a6e -fg #fff -font font(.s)
+
+    # Notices
+    frame .n
+    set nbg {#fac #fc9 #fe7 #dc5 #ada #7ef #9cf #abe #bbb}
+    set nfg {#000 #000 #000 #000 #000 #110 #000 #000 #000}
+    foreach i {1 2 3 4 5 6 7 8 9} {
+        button .n.$i -textvar msg($i)
+        .n.$i configure -anchor nw -font font(.n) -bd 0 -highlightthickness 0 -padx 6 -pady 3 -relief flat -command "ack $i"
+        .n.$i configure -bg [lindex $nbg [expr $i - 1]] -fg [lindex $nfg [expr $i - 1]]
+        set ::msg($i) ""
+    }
+
+    foreach w {.d.t .d.w .d.m .s} {
+        $w configure -anchor nw -font font($w) -bd 0 -highlightthickness 0 -padx 6 -pady 3 -relief flat
+    }
+    pack .d -side left -anchor n -expand 0 -fill both
+    pack .s -side left -anchor n -expand 0 -fill both
+    pack .n -side left -anchor n -expand 1 -fill both
+    foreach w {.d.t .d.w .d.m .s} { pack $w -side left -anchor n -expand 0 -fill x }
+
+    refresh
+    every 1000 {refresh}
+}
+
+proc post {i msg} {
+    set ::msg($i) $msg
+    pack .n.$i -side left -anchor n -expand 0 -fill both
+}
+
+proc ack {i} {
+    set ::msg($i) ""
+    pack forget .n.$i
+}
+
+proc every {ms body} {
+   eval $body
+   after $ms [list every $ms $body]
+}
+
+proc refresh {} {
+    set s [clock sec]
+    set ::time [clock format $s -format "%H:%M:%S"]
+    set ::wday [clock format $s -format "%a"      ]
+    set ::mday [clock format $s -format "%b %d"   ]
+}
+
+if {$::argc == 0} {
+    start 24
+} else {
+    start [lindex $::argv 0]
+}
+
+foreach i {1 2 3 4 5 6 7 8 9} {
+    after [expr $i * 100 - 100] "post $i {note $i}"
+}
+#post 1 "hello world"
+#after 1000 {
+#    post 2 "hi there"
+#    after 1000 {
+#        post 3 "goodbye"
+#        after 1000 exit
+#    }
+#}
+
