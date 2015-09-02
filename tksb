@@ -70,8 +70,7 @@ proc udp_readable {channel} {
         .s configure -bg $msg
     } elseif {[string equal $typ {F}]} {
         .s configure -fg $msg
-    }
-    elseif {[string equal $typ {-}]} {
+    } elseif {[string equal $typ {-}]} {
         ackall
     }
     # set peer [fconfigure $channel -peer]
