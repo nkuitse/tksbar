@@ -1,9 +1,10 @@
 #!/usr/bin/wish
 
 package require Tk
+package require udp
 
 proc start {{height 24}} {
-    set ::status "off"
+    set ::status "(no status)"
 
     . configure -borderwidth 0 -bg #28e
 
@@ -32,13 +33,13 @@ proc start {{height 24}} {
 
     # Notices
     frame .n
-    set nbg {#fac #fc9 #fe7 #dc5 #ada #7ef #9cf #abe #bbb}
+    set nbg {#fac #fc9 #fe7 #dc5 #ada #7ef #acf #abc #aa9}
     set nfg {#000 #000 #000 #000 #000 #110 #000 #000 #000}
     foreach i {1 2 3 4 5 6 7 8 9} {
+        set ::msg($i) ""
         button .n.$i -textvar msg($i)
         .n.$i configure -anchor nw -font font(.n) -bd 0 -highlightthickness 0 -padx 6 -pady 3 -relief flat -command "ack $i"
         .n.$i configure -bg [lindex $nbg [expr $i - 1]] -fg [lindex $nfg [expr $i - 1]]
-        set ::msg($i) ""
     }
 
     foreach w {.d.t .d.w .d.m .s} {
@@ -49,18 +50,58 @@ proc start {{height 24}} {
     pack .n -side left -anchor n -expand 1 -fill both
     foreach w {.d.t .d.w .d.m .s} { pack $w -side left -anchor n -expand 0 -fill x }
 
+    set sock [udp_open 9093]
+    fconfigure $sock -buffering none -translation binary
+    fileevent $sock readable [list udp_readable $sock]
+
     refresh
     every 1000 {refresh}
 }
 
-proc post {i msg} {
+proc udp_readable {channel} {
+    set msg [gets $channel]
+    set typ [string range $msg 0 0  ]
+    set msg [string range $msg 1 end]
+    if {[string equal $typ {:}]} {
+        post $msg
+    } elseif {[string equal $typ {@}]} {
+        set ::status $msg
+    } elseif {[string equal $typ {B}]} {
+        .s configure -bg $msg
+    } elseif {[string equal $typ {F}]} {
+        .s configure -fg $msg
+    }
+    elseif {[string equal $typ {-}]} {
+        ackall
+    }
+    # set peer [fconfigure $channel -peer]
+    # Do something with the data and/or the peer address information
+    #post $msg
+    #puts $channel ""
+}
+proc post {msg} {
+    set i [nextMsg]
     set ::msg($i) $msg
     pack .n.$i -side left -anchor n -expand 0 -fill both
+}
+
+proc nextMsg {} {
+    foreach i {1 2 3 4 5 6 7 8 9} {
+        if { $::msg($i) == "" } { return $i }
+    }
+    return 0
+}
+
+proc ackall {} {
+    foreach i {1 2 3 4 5 6 7 8 9} {
+        pack forget .n.$i
+    }
 }
 
 proc ack {i} {
     set ::msg($i) ""
     pack forget .n.$i
+    # post "ack $i"
 }
 
 proc every {ms body} {
@@ -75,21 +116,14 @@ proc refresh {} {
     set ::mday [clock format $s -format "%b %d"   ]
 }
 
+proc test {} {
+    foreach i {1 2 3 4 5 6 7 8 9} {
+        after [expr $i * 100 - 100] "post {note $i}"
+    }
+}
+
 if {$::argc == 0} {
     start 24
 } else {
     start [lindex $::argv 0]
 }
-
-foreach i {1 2 3 4 5 6 7 8 9} {
-    after [expr $i * 100 - 100] "post $i {note $i}"
-}
-#post 1 "hello world"
-#after 1000 {
-#    post 2 "hi there"
-#    after 1000 {
-#        post 3 "goodbye"
-#        after 1000 exit
-#    }
-#}
-
