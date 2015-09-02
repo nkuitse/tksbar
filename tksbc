@@ -1,0 +1,11 @@
+#!/usr/bin/tclsh
+
+package require udp
+
+set sock [udp_open]
+udp_conf $sock localhost 9093
+fconfigure $sock -buffering none -translation binary
+
+foreach a $argv {
+    puts $sock $a
+}
