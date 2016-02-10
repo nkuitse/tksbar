@@ -7,5 +7,11 @@ udp_conf $sock localhost 9093
 fconfigure $sock -buffering none -translation binary
 
 foreach a $argv {
-    puts $sock $a
+    if {[string equal $a -]} {
+        while {[gets stdin a] >= 0} {
+            puts $sock $a
+        }
+    } else {
+        puts $sock $a
+    }
 }

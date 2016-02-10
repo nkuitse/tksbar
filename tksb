@@ -29,7 +29,7 @@ proc start {{height 24}} {
     button .d.m -textvar mday -bg #444 -fg #fff
 
     # Status
-    button .s -textvar status -bg #a6e -fg #fff -font font(.s)
+    button .s -textvar status -bg #a6e -fg #fff -font font(.s) -command {exec tm}
 
     # Notices
     frame .n
@@ -52,36 +52,65 @@ proc start {{height 24}} {
 
     set sock [udp_open 9093]
     fconfigure $sock -buffering none -translation binary
-    fileevent $sock readable [list udp_readable $sock]
+    fileevent $sock readable [list handle_input $sock]
 
     refresh
     every 1000 {refresh}
 }
 
-proc udp_readable {channel} {
-    set msg [gets $channel]
-    set typ [string range $msg 0 0  ]
-    set msg [string range $msg 1 end]
-    if {[string equal $typ {:}]} {
-        post $msg
-    } elseif {[string equal $typ {@}]} {
-        set ::status $msg
-    } elseif {[string equal $typ {B}]} {
-        .s configure -bg $msg
-    } elseif {[string equal $typ {F}]} {
-        .s configure -fg $msg
-    } elseif {[string equal $typ {-}]} {
-        ackall
+proc reconf {prop value i} {
+    if {[string eq $i ""]} {
+        foreach i {1 2 3 4 5 6 7 8 9} {
+            .n.$i configure $prop $value
+        }
+    } else {
+        .n.$i configure $prop $value
     }
-    # set peer [fconfigure $channel -peer]
-    # Do something with the data and/or the peer address information
-    #post $msg
-    #puts $channel ""
 }
-proc post {msg} {
-    set i [nextMsg]
-    set ::msg($i) $msg
+
+proc handle_input {channel} {
+    set str [gets $channel]
+    if {[regexp {^([1-9])?:(.+)} $str match i msg]} {
+        post $msg $i
+    } elseif {[regexp {^([1-9])?B(.+)} $str match i color]} {
+        reconf -bg $color $i
+    } elseif {[regexp {^([1-9])?F(.+)} $str match i color]} {
+        reconf -fg $color $i
+    } elseif {[regexp {^([1-9])!(.+)} $str match i cmd]} {
+        reconf -command $cmd "exec ssid -n $cmd &" $i
+    } elseif {[regexp {^!(.+)} $str match cmd]} {
+        .s configure -command "exec ssid -n $cmd &"
+    } elseif {[string equal $str {!!}]} {
+        .s configure -command "exec tm"
+    } elseif {[string equal $str {--}]} {
+        ack {}
+    } elseif {[regexp {^([1-9]?)-} $str match i]} {
+        ack $i
+    } elseif {[regexp {^@(.+)} $str match ::status]} {
+        # ::status]} {
+        #set ::status $s
+        # Nothing more to do
+    }
+}
+
+proc hide {i} {
+    pack forget .n.$i
+}
+
+proc show {i} {
     pack .n.$i -side left -anchor n -expand 0 -fill both
+}
+
+proc clear {i} {
+    set ::msg($i) ""
+}
+
+proc post {msg i} {
+    if {[string equal $i ""]} {
+        set i [nextMsg]
+        pack .n.$i -side left -anchor n -expand 0 -fill both
+    }
+    set ::msg($i) "($i) $msg"
 }
 
 proc nextMsg {} {
@@ -92,15 +121,19 @@ proc nextMsg {} {
 }
 
 proc ackall {} {
-    foreach i {1 2 3 4 5 6 7 8 9} {
-        pack forget .n.$i
-    }
+    foreach i {1 2 3 4 5 6 7 8 9} { ack $i }
 }
 
 proc ack {i} {
-    set ::msg($i) ""
-    pack forget .n.$i
-    # post "ack $i"
+    if {[string equal $i {}]} {
+        foreach i {1 2 3 4 5 6 7 8 9} {
+            hide $i
+            clear $i
+        }
+    } else {
+        hide $i
+        clear $i
+    }
 }
 
 proc every {ms body} {
@@ -110,9 +143,13 @@ proc every {ms body} {
 
 proc refresh {} {
     set s [clock sec]
-    set ::time [clock format $s -format "%H:%M:%S"]
-    set ::wday [clock format $s -format "%a"      ]
-    set ::mday [clock format $s -format "%b %d"   ]
+    set t [clock format $s -format "%H:%M:%S %a %b %d"]
+    set ::time [string range $t  0  7]
+    set ::wday [string range $t  9 11]
+    set ::mday [string range $t 13 18]
+    #set ::time [clock format $s -format "%H:%M:%S"]
+    #set ::wday [clock format $s -format "%a"      ]
+    #set ::mday [clock format $s -format "%b %d"   ]
 }
 
 proc test {} {
