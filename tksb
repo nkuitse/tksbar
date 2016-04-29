@@ -147,9 +147,6 @@ proc refresh {} {
     set ::time [string range $t  0  7]
     set ::wday [string range $t  9 11]
     set ::mday [string range $t 13 18]
-    #set ::time [clock format $s -format "%H:%M:%S"]
-    #set ::wday [clock format $s -format "%a"      ]
-    #set ::mday [clock format $s -format "%b %d"   ]
 }
 
 proc test {} {
